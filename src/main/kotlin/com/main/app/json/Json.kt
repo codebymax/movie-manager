@@ -23,14 +23,18 @@ data class MovieRequestJ @JsonCreator constructor(
 
 data class MovieJ @JsonCreator constructor(
         val overview: String,
-        val language: String,
+        val languages: MutableList<String>,
         val title: String,
-        val genre_ids: MutableList<String>,
+        val genres: MutableList<String>,
         val posterPath: String,
+        val year: Int,
         val release_date: String,
-        val id: Long,
+        val id: String,
         val director: String,
-        val cast: MutableList<String>
+        val cast: MutableList<String>,
+        val runtime: Int,
+        val reviews: MutableMap<String, Double>,
+        val rating: String
 )
 
 data class MovieJArray @JsonCreator constructor(

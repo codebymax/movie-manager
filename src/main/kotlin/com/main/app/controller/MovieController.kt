@@ -55,9 +55,9 @@ class MovieController {
     fun addMovies(@RequestBody movies: MovieRequestJ): MovieJArray {
         var array = mutableListOf<MovieJ>()
         movies.movies.forEach {
-            measureTimeMillis({time -> println("Took $time") }) {
-                getMovieInfo(it)?.toJson()
-            }?.let { it1 -> array.add(it1) }
+            array.add(measureTimeMillis({time -> println("Took $time") }) {
+                getMovieInfo(it).toJson()
+            })
         }
         return MovieJArray(array)
     }
@@ -80,41 +80,39 @@ class MovieController {
         return result
     }
 
-    private fun getMovieInfo(movie: SingleMovieRequestJ): Movie? {
-        val url = "https://api.themoviedb.org/3/search/movie"
-        val url2 = "http://www.omdbapi.com/"
+    private fun getMovieInfo(movie: SingleMovieRequestJ): Movie {
+        val url = "http://www.omdbapi.com/"
         var urlBuilder = HttpUrl.parse(url).newBuilder()
-        urlBuilder.addQueryParameter("api_key", movieDB_api_key)
-        urlBuilder.addQueryParameter("query", movie.title)
-        urlBuilder.addQueryParameter("language", "en-US")
+        urlBuilder.addQueryParameter("apikey", omdb_api_key)
+        urlBuilder.addQueryParameter("t", movie.title)
+        urlBuilder.addQueryParameter("y", movie.year)
         var request = Request.Builder()
                 .url(urlBuilder.build().toString())
                 .build()
         var call = client.newCall(request)
         var response = call.execute().body().string()
-
-        var Jobject = JSONObject(response)
-        var Jarray = Jobject.getJSONArray("results")
-        var result: Movie? = null
-        for (i in 0 until Jarray.length()) {
-            var obj = Jarray.getJSONObject(i)
-            if (movie.title == obj.get("title").toString() && movie.year == obj.get("release_date").toString().split("-")[0]) {
-                result = Movie(obj.get("title").toString(), /*obj.get("genre_ids").toString().map { it.toInt() }.toMutableList()*/obj.get("release_date").toString(), obj.get("original_language").toString())
+        var jObject = JSONObject(response)
+        println(jObject.toString(4))
+        var result = Movie(jObject.get("imdbID").toString(), jObject.get("Title").toString(),
+                        jObject.get("Plot").toString(), mutableListOf(),
+                        jObject.get("Poster").toString(), jObject.get("Year").toString().toInt(), jObject.get("Released").toString(),
+                        mutableListOf(), jObject.get("Director").toString(),
+                        mutableListOf(), jObject.get("Runtime").toString().split(" ")[0].toInt(),
+                        mutableMapOf(), jObject.get("Rated").toString())
+        var map = mutableMapOf<String, Double>()
+        var jArray = jObject.getJSONArray("Ratings")
+        for (i in 0 until jArray.length()) {
+            var obj = jArray.getJSONObject(i)
+            println(obj.toString(2))
+            if(obj.get("Source").toString() == "Rotten Tomatoes") {
+                map["Rotten Tomatoes"] = obj.get("Value").toString().split("%")[0].toDouble()
                 break
             }
         }
-        //Now that we have initial info on the movie we are going to make another request for more movie info
+        map["Metascore"] = jObject.get("Metascore").toString().toDouble()
+        map["imdb"] = jObject.get("imdbRating").toString().toDouble()
+        result.setReview(map)
 
-        urlBuilder = HttpUrl.parse(url2).newBuilder()
-        urlBuilder.addQueryParameter("apikey", omdb_api_key)
-        urlBuilder.addQueryParameter("t", movie.title)
-        urlBuilder.addQueryParameter("y", movie.year)
-        request = Request.Builder()
-                .url(urlBuilder.build().toString())
-                .build()
-        call = client.newCall(request)
-        response = call.execute().body().string()
-        Jobject = JSONObject(response)
         return result
     }
 }
