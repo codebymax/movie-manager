@@ -94,16 +94,15 @@ class MovieController {
         var jObject = JSONObject(response)
         println(jObject.toString(4))
         var result = Movie(jObject.get("imdbID").toString(), jObject.get("Title").toString(),
-                        jObject.get("Plot").toString(), mutableListOf(),
+                        jObject.get("Plot").toString(), jObject.get("Genre").toString().split(",").map { it.trim() }.toMutableList(),
                         jObject.get("Poster").toString(), jObject.get("Year").toString().toInt(), jObject.get("Released").toString(),
-                        mutableListOf(), jObject.get("Director").toString(),
-                        mutableListOf(), jObject.get("Runtime").toString().split(" ")[0].toInt(),
+                        jObject.get("Language").toString().split(",").map { it.trim() }.toMutableList(), jObject.get("Director").toString(),
+                        jObject.get("Actors").toString().split(",").map { it.trim() }.toMutableList(), jObject.get("Runtime").toString().split(" ")[0].toInt(),
                         mutableMapOf(), jObject.get("Rated").toString())
         var map = mutableMapOf<String, Double>()
         var jArray = jObject.getJSONArray("Ratings")
         for (i in 0 until jArray.length()) {
             var obj = jArray.getJSONObject(i)
-            println(obj.toString(2))
             if(obj.get("Source").toString() == "Rotten Tomatoes") {
                 map["Rotten Tomatoes"] = obj.get("Value").toString().split("%")[0].toDouble()
                 break
@@ -111,7 +110,8 @@ class MovieController {
         }
         map["Metascore"] = jObject.get("Metascore").toString().toDouble()
         map["imdb"] = jObject.get("imdbRating").toString().toDouble()
-        result.setReview(map)
+
+        result.setExtras(map)
 
         return result
     }

@@ -15,7 +15,7 @@ class Movie (@Id private val id: String, private val title: String,
         return MovieJ(overview, languages, title, genres, poster_path, year, release_date, id, director, cast, runtime, reviews, rating)
     }
 
-    fun setReview(map: MutableMap<String, Double>) {
+    fun setExtras(map: MutableMap<String, Double>) {
         this.reviews = map
     }
 }
