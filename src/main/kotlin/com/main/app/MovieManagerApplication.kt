@@ -1,4 +1,4 @@
-package com.main.app.moviemanager
+package com.main.app
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
