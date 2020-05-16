@@ -27,7 +27,7 @@ class MovieController {
 
     private var client = OkHttpClient.Builder().build()
     private var movieDB_api_key = "057d0c57465e435ea13e2b857a3d61e2"
-    private var omdb_api_key = "e8d12d1"
+    private var omdb_api_key = "e3801df4"
 
     @GetMapping("/find/all")
     fun findAll(@RequestParam(value = "userId", required = true) userId: Long): MovieJArray {
@@ -95,9 +95,9 @@ class MovieController {
                 val title = transformTitle(it.title)
                 val year = it.year
                 if (year != null)
-                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.45 && year == it.getYear() }.toMutableList()
+                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.8 && year == it.getYear() }.toMutableList()
                 else
-                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.55 }.toMutableList()
+                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.8 }.toMutableList()
                 if (repo.isEmpty()) {
                     val movie = getMovieInfo(it, movies.userId)
                     if (movie != null) {
@@ -112,6 +112,8 @@ class MovieController {
                         repository.save(repo[0].addUser(movies.userId))
                         reused++
                     }
+                    //else
+                        //println(it.title + ": was already in the database")
                 }
             }
         }
