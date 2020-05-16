@@ -31,7 +31,7 @@ class MovieController {
 
     @GetMapping("/find/all")
     fun findAll(@RequestParam(value = "userId", required = true) userId: Long): MovieJArray {
-        return MovieJArray(repository.findByUserId(userId).map { it.toJson() }.toList())
+        return MovieJArray(repository.findAllBy().filter { it.getUserIds().contains(userId) }.map { it.toJson() }.toList())
     }
 
     @GetMapping("/auth")
@@ -52,19 +52,22 @@ class MovieController {
                      @RequestParam(value = "year", required = false) year: Int?): MovieJArray {
         var array: MovieJArray = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
-            var movies = repository.findByUserId(userId)
+            var movies = mutableListOf<Movie>()
+            measureTimeMillis({ time -> println("Query took $time ms")}) {
+                movies = repository.findAllBy()
+            }
             val title = transformTitle(input)
             measureTimeMillis({time -> println("Mapping took $time ms")}) {
                 var movie_map = movies.map { similarity(title, it.getSearchTitle()) to it.toJson() }.toMap().toSortedMap(compareByDescending { it })
-                array = MovieJArray(movie_map.values.toMutableList().subList(0, 4))
+                array = MovieJArray(movie_map.values.toMutableList().filter { it.userIds.contains(userId) }.subList(0,4))
             }
-            /*
-            movies = movies.filter {
-                val similar = similarity(title, it.getSearchTitle())
-                (year == null && similar > 0.55) || (year != null && similar > 0.45 && year == it.getYear())
-            }.toMutableList()
-            array = MovieJArray(movies.sortedWith(compareByDescending { similarity(title, it.getSearchTitle()) }).map { it.toJson() })
-            */
+            measureTimeMillis({time -> println("Original method took $time ms")}) {
+                movies = movies.filter {
+                    val similar = similarity(title, it.getSearchTitle())
+                    (year == null && similar > 0.55) || (year != null && similar > 0.45 && year == it.getYear())
+                }.toMutableList()
+                array = MovieJArray(movies.sortedWith(compareByDescending { similarity(title, it.getSearchTitle()) }).map { it.toJson() })
+            }
         }
         return array
     }
@@ -84,23 +87,36 @@ class MovieController {
     @PostMapping("/movie/add")
     fun addMovies(@RequestBody movies: MovieRequestJ): MovieJArray {
         var array = mutableListOf<MovieJ>()
-        var count = 0
+        var new = 0
+        var reused = 0
         measureTimeMillis({time -> println("Import took $time ms")}) {
             movies.movies.forEach {
-                try {
-                    if (it.year != null)
-                        repository.findByTitleAndYear(it.title, it.year)
-                } catch (e: EmptyResultDataAccessException) {
+                var repo = repository.findAllBy()
+                val title = transformTitle(it.title)
+                val year = it.year
+                if (year != null)
+                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.45 && year == it.getYear() }.toMutableList()
+                else
+                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.55 }.toMutableList()
+                if (repo.isEmpty()) {
                     val movie = getMovieInfo(it, movies.userId)
                     if (movie != null) {
                         repository.save(movie)
                         array.add(movie.toJson())
-                        count++
+                        new++
+                    }
+                }
+                else {
+                    repo = repo.sortedWith(compareByDescending { similarity(title, it.getSearchTitle()) }).toMutableList()
+                    if (!repo[0].getUserIds().contains(movies.userId)) {
+                        repository.save(repo[0].addUser(movies.userId))
+                        reused++
                     }
                 }
             }
         }
-        println("$count movies added")
+        println("$new movies added")
+        println("$reused movies updated")
         return MovieJArray(array)
     }
 
@@ -172,7 +188,7 @@ class MovieController {
         if (jObject.has("imdbID"))
             tempId = jObject.get("imdbID").toString()
 
-        val result = Movie(tempId, uId, jObject.get("Title").toString(), transformTitle(jObject.get("Title").toString()),
+        val result = Movie(tempId, mutableListOf(uId), jObject.get("Title").toString(), transformTitle(jObject.get("Title").toString()),
                 jObject.get("Plot").toString(), jObject.get("Genre").toString().split(",").map { it.trim() }.toMutableList(),
                 jObject.get("Poster").toString(), tempYear, jObject.get("Released").toString(),
                 jObject.get("Language").toString().split(",").map { it.trim() }.toMutableList(), jObject.get("Director").toString(),
