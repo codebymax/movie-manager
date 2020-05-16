@@ -14,22 +14,25 @@ data class UserJ @JsonCreator constructor(
 
 data class SingleMovieRequestJ @JsonCreator constructor(
         val title: String,
-        val year: String
+        val year: Int?
 )
 
 data class MovieRequestJ @JsonCreator constructor(
+        val userId: Long,
         val movies: List<SingleMovieRequestJ>
 )
 
 data class MovieJ @JsonCreator constructor(
         val overview: String,
         val languages: MutableList<String>,
+        val search_title: String,
         val title: String,
         val genres: MutableList<String>,
         val posterPath: String,
         val year: Int,
         val release_date: String,
         val id: String,
+        val userId: Long,
         val director: String,
         val cast: MutableList<String>,
         val runtime: Int,
@@ -57,6 +60,7 @@ data class SingleResult @JsonCreator constructor(
         val overview: String,
         val release_date: String
 )
+
 data class DBResponse @JsonCreator constructor(
         val page: Int,
         val total_results: Int
