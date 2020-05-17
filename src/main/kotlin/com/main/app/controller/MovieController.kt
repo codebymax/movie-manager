@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.web.bind.annotation.*
 import java.text.Normalizer
+import java.util.*
 import java.util.regex.Pattern
 
 @RestController
@@ -91,29 +92,22 @@ class MovieController {
         var reused = 0
         measureTimeMillis({time -> println("Import took $time ms")}) {
             movies.movies.forEach {
-                var repo = repository.findAllBy()
-                val title = transformTitle(it.title)
-                val year = it.year
-                if (year != null)
-                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.8 && year == it.getYear() }.toMutableList()
-                else
-                    repo = repo.filter { similarity(title, it.getSearchTitle()) > 0.8 }.toMutableList()
-                if (repo.isEmpty()) {
-                    val movie = getMovieInfo(it, movies.userId)
-                    if (movie != null) {
-                        repository.save(movie)
-                        array.add(movie.toJson())
-                        new++
-                    }
-                }
-                else {
-                    repo = repo.sortedWith(compareByDescending { similarity(title, it.getSearchTitle()) }).toMutableList()
-                    if (!repo[0].getUserIds().contains(movies.userId)) {
-                        repository.save(repo[0].addUser(movies.userId))
+                val movie = getMovieInfo(it, movies.userId)
+                var result: Optional<Movie>
+                if (movie != null) {
+                    result = repository.findById(movie.getId())
+                    if (result.isPresent && !result.get().getUserIds().contains(movies.userId)) {
+                        repository.save(result.get().addUser(movies.userId))
                         reused++
+                        array.add(result.get().addUser(movies.userId).toJson())
                     }
-                    //else
-                        //println(it.title + ": was already in the database")
+                    else if(result.isEmpty){
+                        repository.save(movie)
+                        new++
+                        array.add(movie.toJson())
+                    }
+                } else {
+                    println(it.title + ": Failed to add")
                 }
             }
         }
@@ -161,15 +155,8 @@ class MovieController {
         var jObject = JSONObject(response)
         var tempYear = 0
         if (jObject.get("Response").toString() == "False") {
-
-            if (movie.year != null) {
-                println(movie.year.toString() + ": " + movie.title)
-                return getMovieInfo(SingleMovieRequestJ(movie.title, null), uId)
-            }
-            else{
-                println("Null year failed: " + movie.title)
-                return null
-            }
+            println("Import failed: " + movie.title)
+            return null
         }
         try {
             if (jObject.has("Year"))

@@ -14,7 +14,7 @@ data class UserJ @JsonCreator constructor(
 
 data class SingleMovieRequestJ @JsonCreator constructor(
         val title: String,
-        val year: Int?
+        val year: Int
 )
 
 data class MovieRequestJ @JsonCreator constructor(
