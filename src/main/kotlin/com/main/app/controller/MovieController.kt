@@ -32,7 +32,7 @@ class MovieController {
 
     @GetMapping("/find/all")
     fun findAll(@RequestParam(value = "userId", required = true) userId: Long): MovieJArray {
-        return MovieJArray(repository.findAllBy().filter { it.getUserIds().contains(userId) }.map { it.toJson() }.toList())
+        return MovieJArray(repository.findAllBy().filter { it.userIds.contains(userId) }.map { it.toJson() }.toList())
     }
 
     @GetMapping("/auth")
@@ -51,7 +51,7 @@ class MovieController {
     fun searchMovies(@RequestParam(value = "userId", required = true) userId: Long,
                      @RequestParam(value = "input", required = true) input: String,
                      @RequestParam(value = "year", required = false) year: Int?): MovieJArray {
-        var array: MovieJArray = MovieJArray(mutableListOf())
+        var array = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
             var movies = mutableListOf<Movie>()
             measureTimeMillis({ time -> println("Query took $time ms")}) {
@@ -59,15 +59,8 @@ class MovieController {
             }
             val title = transformTitle(input)
             measureTimeMillis({time -> println("Mapping took $time ms")}) {
-                var movie_map = movies.map { similarity(title, it.getSearchTitle()) to it.toJson() }.toMap().toSortedMap(compareByDescending { it })
+                val movie_map = movies.map { similarity(title, it.searchTitle) to it.toJson() }.toMap().toSortedMap(compareByDescending { it })
                 array = MovieJArray(movie_map.values.toMutableList().filter { it.userIds.contains(userId) }.subList(0,4))
-            }
-            measureTimeMillis({time -> println("Original method took $time ms")}) {
-                movies = movies.filter {
-                    val similar = similarity(title, it.getSearchTitle())
-                    (year == null && similar > 0.55) || (year != null && similar > 0.45 && year == it.getYear())
-                }.toMutableList()
-                array = MovieJArray(movies.sortedWith(compareByDescending { similarity(title, it.getSearchTitle()) }).map { it.toJson() })
             }
         }
         return array
@@ -87,16 +80,16 @@ class MovieController {
 
     @PostMapping("/movie/add")
     fun addMovies(@RequestBody movies: MovieRequestJ): MovieJArray {
-        var array = mutableListOf<MovieJ>()
+        val array = mutableListOf<MovieJ>()
         var new = 0
         var reused = 0
         measureTimeMillis({time -> println("Import took $time ms")}) {
             movies.movies.forEach {
                 val movie = getMovieInfo(it, movies.userId)
-                var result: Optional<Movie>
+                val result: Optional<Movie>
                 if (movie != null) {
-                    result = repository.findById(movie.getId())
-                    if (result.isPresent && !result.get().getUserIds().contains(movies.userId)) {
+                    result = repository.findById(movie.id)
+                    if (result.isPresent && !result.get().userIds.contains(movies.userId)) {
                         repository.save(result.get().addUser(movies.userId))
                         reused++
                         array.add(result.get().addUser(movies.userId).toJson())
@@ -142,17 +135,16 @@ class MovieController {
 
     private fun getMovieInfo(movie: SingleMovieRequestJ, uId: Long): Movie? {
         val url = "http://www.omdbapi.com/"
-        var urlBuilder = HttpUrl.parse(url).newBuilder()
+        val urlBuilder = HttpUrl.parse(url).newBuilder()
         urlBuilder.addQueryParameter("apikey", omdb_api_key)
         urlBuilder.addQueryParameter("t", movie.title.toLowerCase())
-        if (movie.year != null)
-            urlBuilder.addQueryParameter("y", movie.year.toString())
-        var request = Request.Builder()
+        urlBuilder.addQueryParameter("y", movie.year.toString())
+        val request = Request.Builder()
                 .url(urlBuilder.build().toString())
                 .build()
-        var call = client.newCall(request)
-        var response = call.execute().body().string()
-        var jObject = JSONObject(response)
+        val call = client.newCall(request)
+        val response = call.execute().body().string()
+        val jObject = JSONObject(response)
         var tempYear = 0
         if (jObject.get("Response").toString() == "False") {
             println("Import failed: " + movie.title)
@@ -203,13 +195,13 @@ class MovieController {
     }
 
     fun transformTitle(title: String): String {
-        var words = listOf("the", "of", "is", "a", "and", "to", "at", "be", "this", "have", "from")
+        val words = listOf("the", "of", "is", "a", "and", "to", "at", "be", "this", "have", "from")
         var result = title
         //remove common words, turn roman numerals to arabic, and remove whitespace
         result = result.split(" ").filter { !words.contains(it.toLowerCase()) }.map { if (checkNumeral(it)) toArabic(it).toString() else it }.joinToString("")
         //turn non-ASCII chars to ASCII
         result = Normalizer.normalize(result, Normalizer.Form.NFD)
-        var pattern = Pattern.compile("\\p{InCOMBINING_DIACRITICAL_MARKS}+")
+        val pattern = Pattern.compile("\\p{InCOMBINING_DIACRITICAL_MARKS}+")
         result = pattern.matcher(result).replaceAll("")
         //uppercase
         result = result.toUpperCase()
@@ -218,15 +210,15 @@ class MovieController {
     }
 
     fun checkNumeral(input: String): Boolean {
-        var number = input.toUpperCase()
-        var valid = listOf<String>("M", "D", "C", "L", "X", "V", "I")
+        val number = input.toUpperCase()
+        val valid = listOf<String>("M", "D", "C", "L", "X", "V", "I")
         if(number.split("").filter { valid.contains(it) }.joinToString("").length == number.length)
             return true
         return false
     }
 
     fun toArabic(input: String): Int {
-        var number = input.toUpperCase()
+        val number = input.toUpperCase()
 
         if (number.startsWith("M")) return 1000 + toArabic(number.removeRange(0, 1))
         if (number.startsWith("CM")) return 900 + toArabic(number.removeRange(0, 2))
@@ -254,7 +246,7 @@ class MovieController {
         val longerLength = longer.length
         if (longerLength == 0)
             return 1.0
-        var distance = LevenshteinDistance()
+        val distance = LevenshteinDistance()
         return (longerLength - distance.apply(longer, shorter)) / longerLength.toDouble()
     }
 }

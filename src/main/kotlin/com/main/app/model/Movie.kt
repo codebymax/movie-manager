@@ -2,33 +2,14 @@ package com.main.app.model
 
 import com.main.app.json.MovieJ
 import org.springframework.data.annotation.Id
+import java.io.Serializable
 
-class Movie (@Id private val id: String, private val userIds: MutableList<Long>, private val title: String,
-             private val searchTitle: String, private val overview: String, private val genres: MutableList<String>,
-             private val poster_path: String, private val year: Int, private val release_date: String,
+class Movie (@Id val id: String, val userIds: MutableList<Long>, val title: String,
+             val searchTitle: String, private val overview: String, private val genres: MutableList<String>,
+             private val poster_path: String, val year: Int, private val release_date: String,
              private val languages: MutableList<String>, private val director: String,
              private val cast: MutableList<String>, private val runtime: Int,
-             private var reviews: MutableMap<String, Double>, private val rating: String) {
-
-    fun getId(): String {
-        return id
-    }
-
-    fun getSearchTitle(): String {
-        return searchTitle
-    }
-
-    fun getYear(): Int {
-        return year
-    }
-
-    fun getTitle(): String {
-        return title
-    }
-
-    fun getUserIds(): MutableList<Long> {
-        return userIds
-    }
+             private var reviews: MutableMap<String, Double>, private val rating: String) : Serializable {
 
     fun addUser(userId: Long): Movie {
         this.userIds.add(userId)
