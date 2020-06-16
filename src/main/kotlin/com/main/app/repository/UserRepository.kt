@@ -12,4 +12,6 @@ interface UserRepository : MongoRepository<User, String> {
     fun findById(id: Long): User
 
     fun findAllByOrderByIdDesc(): MutableList<User>
+
+    fun deleteById(id: Long)
 }

@@ -33,7 +33,7 @@ data class MovieJ @JsonCreator constructor(
         val release_date: String,
         val id: String,
         val userIds: MutableList<Long>,
-        val director: String,
+        val director: MutableList<String>,
         val cast: MutableList<String>,
         val runtime: Int,
         val reviews: MutableMap<String, Double>,
