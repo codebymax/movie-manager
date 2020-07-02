@@ -18,7 +18,6 @@ data class SingleMovieRequestJ @JsonCreator constructor(
 )
 
 data class MovieRequestJ @JsonCreator constructor(
-        val userId: Long,
         val movies: List<SingleMovieRequestJ>
 )
 
@@ -59,6 +58,10 @@ data class SingleResult @JsonCreator constructor(
         val vote_average: Double,
         val overview: String,
         val release_date: String
+)
+
+data class GenreJArray @JsonCreator constructor(
+        val genres: MutableSet<String>
 )
 
 data class DBResponse @JsonCreator constructor(

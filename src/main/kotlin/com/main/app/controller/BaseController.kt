@@ -148,4 +148,8 @@ class BaseController {
 
         return result
     }
+
+    fun filterUser(movies: MutableList<Movie>, userId: Long): MutableList<Movie> {
+        return movies.filter { it.userIds.contains(userId) }.toMutableList()
+    }
 }

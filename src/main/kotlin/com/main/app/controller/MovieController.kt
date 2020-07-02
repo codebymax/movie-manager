@@ -16,32 +16,38 @@ import java.util.*
 import java.util.regex.Pattern
 
 @RestController
-@RequestMapping("/")
+@RequestMapping("/{id}")
 class MovieController : BaseController() {
     @Autowired
     lateinit var repository: MovieRepository
 
-    @GetMapping("/find/all")
-    fun findAll(@RequestParam(value = "userId", required = true) userId: Long): MovieJArray {
-        return MovieJArray(repository.findAllBy().filter { it.userIds.contains(userId) }.map { it.toJson() }.toList())
+    @GetMapping("/all")
+    fun findAll(@PathVariable id: String): MovieJArray {
+        return MovieJArray(repository.findAllBy().filter { it.userIds.contains(id.toLong()) }.map { it.toJson() }.toList())
     }
 
-    @PostMapping("/movie/add")
-    fun addMovies(@RequestBody movies: MovieRequestJ): MovieJArray {
+    @GetMapping("/count")
+    fun countAll(@PathVariable id: String): Int {
+        return repository.findAllBy().filter { it.userIds.contains(id.toLong()) }.count()
+    }
+
+    @PostMapping("/add")
+    fun addMovies(@PathVariable id: String,
+                  @RequestBody movies: MovieRequestJ): MovieJArray {
         val array = mutableListOf<MovieJ>()
         var new = 0
         var reused = 0
         measureTimeMillis({time -> println("Import took $time ms")}) {
             movies.movies.forEach {
-                val movie = getMovieInfo(it, movies.userId)
+                val movie = getMovieInfo(it, id.toLong())
                 val result : Movie
                 if (movie != null) {
                     try {
                         result = repository.findByTitleAndYear(movie.title, movie.year)
-                        if (!result.userIds.contains(movies.userId)) {
-                            repository.save(result.addUser(movies.userId))
+                        if (!result.userIds.contains(id.toLong())) {
+                            repository.save(result.addUser(id.toLong()))
                             reused++
-                            array.add(result.addUser(movies.userId).toJson())
+                            array.add(result.addUser(id.toLong()).toJson())
                         }
                     }
                     catch (e: EmptyResultDataAccessException) {
@@ -59,9 +65,9 @@ class MovieController : BaseController() {
         return MovieJArray(array)
     }
 
-    @DeleteMapping("/movie/delete/all")
-    fun delMovies(): ResponseJ {
-        repository.deleteAllBy()
+    @DeleteMapping("/delete/all")
+    fun delMovies(@PathVariable id: String): ResponseJ {
+        repository.deleteById(id.toLong())
         return ResponseJ(1, "N/A")
     }
 }
