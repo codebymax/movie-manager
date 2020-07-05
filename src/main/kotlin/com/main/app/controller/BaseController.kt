@@ -1,5 +1,6 @@
 package com.main.app.controller
 
+import com.main.app.json.MovieJ
 import com.main.app.json.SingleMovieRequestJ
 import com.main.app.model.Movie
 import okhttp3.HttpUrl
@@ -9,6 +10,8 @@ import org.apache.commons.text.similarity.LevenshteinDistance
 import org.json.JSONObject
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.lang.Error
+import java.net.SocketTimeoutException
 import java.text.Normalizer
 import java.util.regex.Pattern
 
@@ -86,23 +89,37 @@ class BaseController {
         return (longerLength - distance.apply(longer, shorter)) / longerLength.toDouble()
     }
 
-    fun getMovieInfo(movie: SingleMovieRequestJ, uId: Long): Movie? {
+    fun getMovieInfo(movie: SingleMovieRequestJ?, movie_id: String?, uId: Long): Movie? {
         val client = OkHttpClient.Builder().build()
         val omdbApiKey = "e3801df4"
         val url = "http://www.omdbapi.com/"
         val urlBuilder = HttpUrl.parse(url).newBuilder()
         urlBuilder.addQueryParameter("apikey", omdbApiKey)
-        urlBuilder.addQueryParameter("t", movie.title.toLowerCase())
-        urlBuilder.addQueryParameter("y", movie.year.toString())
+        if (movie != null) {
+            urlBuilder.addQueryParameter("t", movie.title.toLowerCase())
+            urlBuilder.addQueryParameter("y", movie.year.toString())
+        }
+        else {
+            urlBuilder.addQueryParameter("i", movie_id)
+        }
         val request = Request.Builder()
                 .url(urlBuilder.build().toString())
                 .build()
         val call = client.newCall(request)
-        val response = call.execute().body().string()
+        var response = ""
+        try {
+            response = call.execute().body().string()
+        } catch (e: SocketTimeoutException) {
+            println("Socket Timeout")
+            return null
+        }
         val jObject = JSONObject(response)
         var tempYear = 0
         if (jObject.get("Response").toString() == "False") {
-            println("Import failed: " + movie.title)
+            if (movie != null)
+                println("Import failed: " + movie.title)
+            else
+                println("Import failed: $movie_id")
             return null
         }
         try {
@@ -126,7 +143,7 @@ class BaseController {
 
         val result = Movie(tempId, mutableListOf(uId), jObject.get("Title").toString(), transform(jObject.get("Title").toString()),
                 jObject.get("Plot").toString(), jObject.get("Genre").toString().split(",").map { it.trim() }.toMutableList(),
-                jObject.get("Poster").toString(), tempYear, jObject.get("Released").toString(),
+                jObject.get("Poster").toString(), tempYear, convertDate(jObject.get("Released").toString()),
                 jObject.get("Language").toString().split(",").map { it.trim() }.toMutableList(), jObject.get("Director").toString().split(",").map { it.trim() }.toMutableList(),
                 jObject.get("Actors").toString().split(",").map { it.trim() }.toMutableList(), tempRun,
                 mutableMapOf(), jObject.get("Rated").toString())
@@ -151,5 +168,20 @@ class BaseController {
 
     fun filterUser(movies: MutableList<Movie>, userId: Long): MutableList<Movie> {
         return movies.filter { it.userIds.contains(userId) }.toMutableList()
+    }
+
+    fun convertDate(date: String): String {
+        try {
+            val arr = date.split(" ")
+            val map: HashMap<String, Int> = hashMapOf("Jan" to 1, "Feb" to 2, "Mar" to 3, "Apr" to 4, "May" to 5, "Jun" to 6, "Jul" to 7, "Aug" to 8, "Sep" to 9, "Oct" to 10, "Nov" to 11, "Dec" to 12)
+            return arr[0] + " " + map[arr[1]].toString() + " " + arr[2]
+        } catch (e: Exception) {
+            println(date)
+            return "N/A"
+        }
+    }
+
+    fun emptyMovie(): MovieJ {
+        return MovieJ("", mutableListOf(), "", "", mutableListOf(), "", 0, "", "", mutableListOf(), mutableListOf(), mutableListOf(), 0, mutableMapOf(), "")
     }
 }

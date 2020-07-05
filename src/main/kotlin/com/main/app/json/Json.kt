@@ -21,6 +21,10 @@ data class MovieRequestJ @JsonCreator constructor(
         val movies: List<SingleMovieRequestJ>
 )
 
+data class IdListJ @JsonCreator constructor(
+        val ids: List<String>
+)
+
 data class MovieJ @JsonCreator constructor(
         val overview: String,
         val languages: MutableList<String>,

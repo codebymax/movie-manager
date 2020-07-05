@@ -27,10 +27,9 @@ getFiles(directory)
 print(len(result))
 
 input = {}
-input["userId"] = 0
 input["movies"] = result
-print({k: str(v).encode('utf-8') for k, v in input.items()})
+#print({k: str(v).encode('utf-8') for k, v in input.items()})
 
-URL = "http://localhost:5000/movie/add"
+URL = "http://localhost:5000/0/add"
 r = requests.post(URL, json=input)
 #print(json.dumps(r.json(), indent=2))

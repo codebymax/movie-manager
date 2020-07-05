@@ -11,8 +11,18 @@ interface MovieRepository : MongoRepository<Movie, String> {
 
     @Cacheable("movieCache")
     override fun findById(id: String): Optional<Movie>
+
+    fun findByUserIdsContains(id: Long): MutableList<Movie>
+
     fun findBySearchTitleAndYear(title: String, year: Int): Movie
-    fun findByTitleAndYear(title: String, year: Int): Movie
+    fun findByTitleAndYear(title: String, year: Int): Optional<Movie>
+    fun findByYear(year: Int): MutableList<Movie>
+    fun findByYearAndTitleLike(year: Int, title: String): MutableList<Movie>
+    fun findByTitleLike(title: String): MutableList<Movie>
+
+    fun findBySearchTitleContains(title: String): MutableList<Movie>
+    fun findByYearAndSearchTitleContains(year: Int, title: String): MutableList<Movie>
+
     fun findByDirector(director: String): MutableList<Movie>
 
     

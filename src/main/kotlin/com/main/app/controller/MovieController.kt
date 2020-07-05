@@ -22,13 +22,68 @@ class MovieController : BaseController() {
     lateinit var repository: MovieRepository
 
     @GetMapping("/all")
-    fun findAll(@PathVariable id: String): MovieJArray {
-        return MovieJArray(repository.findAllBy().filter { it.userIds.contains(id.toLong()) }.map { it.toJson() }.toList())
+    fun findAllNew(@PathVariable id: String): MovieJArray {
+        var result = MovieJArray(mutableListOf())
+        measureTimeMillis({time -> println("Import took $time ms")}) {
+            result = MovieJArray(repository.findByUserIdsContains(id.toLong()).map { it.toJson() }.toList())
+        }
+        return result
+    }
+
+    @GetMapping("/id")
+    fun findId(@PathVariable id: String,
+               @RequestParam movie_id: String): MovieJ {
+        var result = emptyMovie()
+        measureTimeMillis({time -> println("Import took $time ms")}) {
+            val temp = repository.findById(movie_id)
+            if (temp.isPresent)
+                result = temp.get().toJson()
+        }
+        return result
     }
 
     @GetMapping("/count")
     fun countAll(@PathVariable id: String): Int {
         return repository.findAllBy().filter { it.userIds.contains(id.toLong()) }.count()
+    }
+
+    @PostMapping("/add/id")
+    fun addById(@PathVariable id: String,
+                @RequestBody movie_ids: IdListJ): ResponseJ {
+        var new = 0
+        var reused = 0
+        var failed = 0
+        var duplicate = 0
+        var count = 0
+        measureTimeMillis({time -> println("Import took $time ms")}) {
+            movie_ids.ids.forEach {
+                println(count)
+                count++
+                val result = repository.findById(it)
+                if (result.isEmpty) {
+                    val movie = getMovieInfo(null, it, id.toLong())
+                    if (movie != null) {
+                        repository.save(movie)
+                        new++
+                    } else {
+                        failed++
+                    }
+                }
+                else {
+                    if (!result.get().userIds.contains(id.toLong())) {
+                        repository.save(result.get().addUser(id.toLong()))
+                        reused++
+                    }
+                    else
+                        duplicate++
+                }
+            }
+        }
+        println("$new movies added")
+        println("$reused movies updated")
+        println("$failed movies failed to add")
+        println("$duplicate movies already existed")
+        return ResponseJ(1, "Added: $new Reused: $reused Failed: $failed Existing: $duplicate")
     }
 
     @PostMapping("/add")
@@ -39,18 +94,18 @@ class MovieController : BaseController() {
         var reused = 0
         measureTimeMillis({time -> println("Import took $time ms")}) {
             movies.movies.forEach {
-                val movie = getMovieInfo(it, id.toLong())
-                val result : Movie
+                val movie = getMovieInfo(it, null, id.toLong())
+                val result : Optional<Movie>
                 if (movie != null) {
-                    try {
-                        result = repository.findByTitleAndYear(movie.title, movie.year)
-                        if (!result.userIds.contains(id.toLong())) {
-                            repository.save(result.addUser(id.toLong()))
+                    result = repository.findByTitleAndYear(movie.title, movie.year)
+                    if (result.isPresent) {
+                        if (!result.get().userIds.contains(id.toLong())) {
+                            repository.save(result.get().addUser(id.toLong()))
                             reused++
-                            array.add(result.addUser(id.toLong()).toJson())
+                            array.add(result.get().addUser(id.toLong()).toJson())
                         }
                     }
-                    catch (e: EmptyResultDataAccessException) {
+                    else {
                         repository.save(movie)
                         new++
                         array.add(movie.toJson())
@@ -67,7 +122,7 @@ class MovieController : BaseController() {
 
     @DeleteMapping("/delete/all")
     fun delMovies(@PathVariable id: String): ResponseJ {
-        repository.deleteById(id.toLong())
+        repository.deleteAllBy()
         return ResponseJ(1, "N/A")
     }
 }

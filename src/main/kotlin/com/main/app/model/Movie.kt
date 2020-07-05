@@ -8,8 +8,8 @@ class Movie (@Id val id: String, val userIds: MutableList<Long>, val title: Stri
              val searchTitle: String, private val overview: String, val genres: MutableList<String>,
              private val poster_path: String, val year: Int, private val release_date: String,
              private val languages: MutableList<String>, val director: MutableList<String>,
-             private val cast: MutableList<String>, private val runtime: Int,
-             private var reviews: MutableMap<String, Double>, private val rating: String) : Serializable {
+             private val cast: MutableList<String>, val runtime: Int,
+             var reviews: MutableMap<String, Double>, private val rating: String) : Serializable {
 
     fun addUser(userId: Long): Movie {
         this.userIds.add(userId)
