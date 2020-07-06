@@ -28,8 +28,8 @@ class SearchController : BaseController() {
             }
             val title = transform(input)
             measureTimeMillis({time -> println("Mapping took $time ms")}) {
-                val movie_map = movies.map { similarity(title, it.searchTitle) to it.toJson() }.toMap().toSortedMap(compareByDescending { it })
-                array = MovieJArray(movie_map.values.toMutableList())
+                val sortedMovies = movies.sortedWith(compareByDescending { similarity(title, it.searchTitle) }).map { it.toJson() }
+                array = MovieJArray(sortedMovies)
             }
         }
         return array
