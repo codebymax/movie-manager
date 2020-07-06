@@ -20,8 +20,8 @@ interface MovieRepository : MongoRepository<Movie, String> {
     fun findByYearAndTitleLike(year: Int, title: String): MutableList<Movie>
     fun findByTitleLike(title: String): MutableList<Movie>
 
-    fun findBySearchTitleContains(title: String): MutableList<Movie>
-    fun findByYearAndSearchTitleContains(year: Int, title: String): MutableList<Movie>
+    fun findByUserIdsContainsAndSearchTitleContains(id: Long, title: String): MutableList<Movie>
+    fun findByUserIdsContainsAndYearAndSearchTitleContains(id: Long, year: Int, title: String): MutableList<Movie>
 
     fun findByDirector(director: String): MutableList<Movie>
 

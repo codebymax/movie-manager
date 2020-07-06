@@ -14,29 +14,7 @@ class SearchController : BaseController() {
     lateinit var repository: MovieRepository
 
     @GetMapping("/title")
-    fun searchByTitle(@PathVariable id: String,
-                      @RequestParam(value = "input", required = true) input: String,
-                      @RequestParam(value = "year", required = false) year: Int?): MovieJArray {
-        var array = MovieJArray(mutableListOf())
-        measureTimeMillis({ time -> println("Search took $time ms")}) {
-            var movies = mutableListOf<Movie>()
-            measureTimeMillis({ time -> println("Query took $time ms")}) {
-                if (year != null)
-                    movies = repository.findByYear(year)
-                else
-                    movies = repository.findAllBy()
-            }
-            val title = transform(input)
-            measureTimeMillis({time -> println("Mapping took $time ms")}) {
-                val movie_map = movies.map { similarity(title, it.searchTitle) to it.toJson() }.toMap().toSortedMap(compareByDescending { it })
-                array = MovieJArray(movie_map.values.toMutableList().filter { it.userIds.contains(id.toLong()) }.subList(0,4))
-            }
-        }
-        return array
-    }
-
-    @GetMapping("/title/new")
-    fun newSearch(@PathVariable id: String,
+    fun newSearch(@PathVariable id: Long,
                   @RequestParam(value = "input", required = true) input: String,
                   @RequestParam(value = "year", required = false) year: Int?): MovieJArray {
         var array = MovieJArray(mutableListOf())
@@ -44,21 +22,21 @@ class SearchController : BaseController() {
             var movies = mutableListOf<Movie>()
             measureTimeMillis({ time -> println("Query took $time ms")}) {
                 if (year != null)
-                    movies = repository.findByYearAndSearchTitleContains(year, transform(input))
+                    movies = repository.findByUserIdsContainsAndYearAndSearchTitleContains(id, year, transform(input))
                 else
-                    movies = repository.findBySearchTitleContains(transform(input))
+                    movies = repository.findByUserIdsContainsAndSearchTitleContains(id, transform(input))
             }
             val title = transform(input)
             measureTimeMillis({time -> println("Mapping took $time ms")}) {
                 val movie_map = movies.map { similarity(title, it.searchTitle) to it.toJson() }.toMap().toSortedMap(compareByDescending { it })
-                array = MovieJArray(movie_map.values.toMutableList().filter { it.userIds.contains(id.toLong()) })
+                array = MovieJArray(movie_map.values.toMutableList())
             }
         }
         return array
     }
 
     @GetMapping("/director")
-    fun searchByDirector(@PathVariable id: String,
+    fun searchByDirector(@PathVariable id: Long,
                          @RequestParam(value = "input", required = true) input: String): MovieJArray {
         var array = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
@@ -70,13 +48,13 @@ class SearchController : BaseController() {
     }
 
     @GetMapping("/genre/all")
-    fun getAllGenres(@PathVariable id: String): GenreJArray {
+    fun getAllGenres(@PathVariable id: Long): GenreJArray {
         var genreMap = mutableListOf<MutableList<String>>()
         var array = mutableSetOf<String>()
         measureTimeMillis({ time -> println("Search took $time ms")}) {
             var movies = repository.findAllBy()
             measureTimeMillis({ time -> println("Processing took $time ms")}) {
-                filterUser(movies, id.toLong()).forEach { genreMap.add(it.genres) }
+                filterUser(movies, id).forEach { genreMap.add(it.genres) }
                 array = genreMap.flatten().toMutableSet()
             }
         }
@@ -84,13 +62,13 @@ class SearchController : BaseController() {
     }
 
     @GetMapping("/genre")
-    fun searchByGenre(@PathVariable id: String,
+    fun searchByGenre(@PathVariable id: Long,
                       @RequestParam(value = "input", required = true) input: String): MovieJArray {
         var array = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
             var movies = repository.findAllBy()
             measureTimeMillis({ time -> println("Processing took $time ms")}) {
-                array = MovieJArray(filterUser(movies, id.toLong()).filter { it.genres.map { genre -> genre.toLowerCase() }.contains(input.toLowerCase()) }.map { it.toJson() })
+                array = MovieJArray(filterUser(movies, id).filter { it.genres.map { genre -> genre.toLowerCase() }.contains(input.toLowerCase()) }.map { it.toJson() })
             }
         }
         return array
