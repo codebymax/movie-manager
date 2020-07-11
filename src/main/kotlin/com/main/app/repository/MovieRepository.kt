@@ -23,6 +23,11 @@ interface MovieRepository : MongoRepository<Movie, String> {
     fun findByUserIdsContainsAndSearchTitleContains(id: Long, title: String): MutableList<Movie>
     fun findByUserIdsContainsAndYearAndSearchTitleContains(id: Long, year: Int, title: String): MutableList<Movie>
 
+    fun findByUserIdsContainsAndReleaseDateNot(id: Long, date: String): MutableList<Movie>
+    fun findByUserIdsContainsAndReleaseDate(id: Long, date: String): MutableList<Movie>
+
+    fun findByUserIdsContainsAndGenresContains(id: Long, genre: String): MutableList<Movie>
+
     fun findByDirector(director: String): MutableList<Movie>
 
     

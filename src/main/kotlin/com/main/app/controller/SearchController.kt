@@ -52,9 +52,9 @@ class SearchController : BaseController() {
         var genreMap = mutableListOf<MutableList<String>>()
         var array = mutableSetOf<String>()
         measureTimeMillis({ time -> println("Search took $time ms")}) {
-            var movies = repository.findAllBy()
+            var movies = repository.findByUserIdsContains(id)
             measureTimeMillis({ time -> println("Processing took $time ms")}) {
-                filterUser(movies, id).forEach { genreMap.add(it.genres) }
+                movies.forEach { genreMap.add(it.genres) }
                 array = genreMap.flatten().toMutableSet()
             }
         }
@@ -66,10 +66,17 @@ class SearchController : BaseController() {
                       @RequestParam(value = "input", required = true) input: String): MovieJArray {
         var array = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
-            var movies = repository.findAllBy()
-            measureTimeMillis({ time -> println("Processing took $time ms")}) {
-                array = MovieJArray(filterUser(movies, id).filter { it.genres.map { genre -> genre.toLowerCase() }.contains(input.toLowerCase()) }.map { it.toJson() })
-            }
+            array = MovieJArray(repository.findByUserIdsContainsAndGenresContains(id, input).map { it.toJson() })
+        }
+        return array
+    }
+
+    @GetMapping("/release")
+    fun searchByRelease(@PathVariable id: Long,
+                      @RequestParam(value = "input", required = true) input: String): MovieJArray {
+        var array = MovieJArray(mutableListOf())
+        measureTimeMillis({ time -> println("Search took $time ms")}) {
+            array = MovieJArray(repository.findByUserIdsContainsAndReleaseDate(id, input).map { it.toJson() })
         }
         return array
     }

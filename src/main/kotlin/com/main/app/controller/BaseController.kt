@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController
 import java.lang.Error
 import java.net.SocketTimeoutException
 import java.text.Normalizer
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.regex.Pattern
 
 /*
@@ -20,6 +22,7 @@ This file contains functions to be used by the other controller files.
 By putting these functions in a parent class it centralizes functions
 that are needed by multiple controllers and reduces code repetition.
  */
+
 @RestController
 @RequestMapping("/")
 class BaseController {
@@ -164,10 +167,6 @@ class BaseController {
         result.setExtras(map)
 
         return result
-    }
-
-    fun filterUser(movies: MutableList<Movie>, userId: Long): MutableList<Movie> {
-        return movies.filter { it.userIds.contains(userId) }.toMutableList()
     }
 
     fun convertDate(date: String): String {
