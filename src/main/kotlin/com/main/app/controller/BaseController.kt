@@ -2,6 +2,7 @@ package com.main.app.controller
 
 import com.main.app.json.MovieJ
 import com.main.app.json.SingleMovieRequestJ
+import com.main.app.model.Counter
 import com.main.app.model.Movie
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
@@ -92,7 +93,8 @@ class BaseController {
         return (longerLength - distance.apply(longer, shorter)) / longerLength.toDouble()
     }
 
-    fun getMovieInfo(movie: SingleMovieRequestJ?, movie_id: String?, uId: Long): Movie? {
+    fun getMovieInfo(movie: SingleMovieRequestJ?, movie_id: String?, uId: Long, counter: Counter): Movie? {
+        counter.increment()
         val client = OkHttpClient.Builder().build()
         val omdbApiKey = "e3801df4"
         val url = "http://www.omdbapi.com/"
@@ -175,7 +177,6 @@ class BaseController {
             val map: HashMap<String, Int> = hashMapOf("Jan" to 1, "Feb" to 2, "Mar" to 3, "Apr" to 4, "May" to 5, "Jun" to 6, "Jul" to 7, "Aug" to 8, "Sep" to 9, "Oct" to 10, "Nov" to 11, "Dec" to 12)
             return arr[0] + " " + map[arr[1]].toString() + " " + arr[2]
         } catch (e: Exception) {
-            println(date)
             return "N/A"
         }
     }

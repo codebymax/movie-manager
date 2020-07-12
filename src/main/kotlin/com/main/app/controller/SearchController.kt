@@ -6,6 +6,7 @@ import com.main.app.model.Movie
 import com.main.app.repository.MovieRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
+import me.xdrop.fuzzywuzzy.FuzzySearch
 
 @RestController
 @RequestMapping("/{id}/search")
@@ -21,16 +22,11 @@ class SearchController : BaseController() {
         measureTimeMillis({ time -> println("Search took $time ms")}) {
             var movies = mutableListOf<Movie>()
             measureTimeMillis({ time -> println("Query took $time ms")}) {
-                if (year != null)
-                    movies = repository.findByUserIdsContainsAndYearAndSearchTitleContains(id, year, transform(input))
-                else
-                    movies = repository.findByUserIdsContainsAndSearchTitleContains(id, transform(input))
+                movies = if (year != null) repository.findByUserIdsContainsAndYear(id, year) else repository.findByUserIdsContains(id)
             }
-            val title = transform(input)
-            measureTimeMillis({time -> println("Mapping took $time ms")}) {
-                val sortedMovies = movies.sortedWith(compareByDescending { similarity(title, it.searchTitle) }).map { it.toJson() }
-                array = MovieJArray(sortedMovies)
-            }
+            movies = movies.filter { FuzzySearch.tokenSortPartialRatio(input, it.title) > 70 }.toMutableList()
+            val sortedMovies = movies.sortedWith(compareByDescending { FuzzySearch.tokenSortRatio(input, it.searchTitle) }).map { it.toJson() }
+            array = MovieJArray(sortedMovies)
         }
         return array
     }
@@ -40,9 +36,9 @@ class SearchController : BaseController() {
                          @RequestParam(value = "input", required = true) input: String): MovieJArray {
         var array = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
-            var movies = repository.findAllBy()
-            println(movies)
-            array = MovieJArray(movies.filter { similarity(transform(input), transform(it.director[0])) > 0.6 }.toMutableList().map { it.toJson() })
+            var movies = repository.findByUserIdsContains(id)
+            movies = movies.filter { FuzzySearch.tokenSortPartialRatio(input, it.director.first()) > 70 }.toMutableList()
+            array = MovieJArray(movies.sortedWith(compareByDescending { FuzzySearch.tokenSortPartialRatio(input, it.director.first()) }).map { it.toJson() })
         }
         return array
     }
