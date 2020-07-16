@@ -5,7 +5,7 @@ import org.springframework.data.annotation.Id
 import java.io.Serializable
 
 class Movie (@Id val id: String, val userIds: MutableList<Long>, val title: String,
-             val searchTitle: String, private val overview: String, val genres: MutableList<String>,
+             private val overview: String, val genres: MutableList<String>,
              private val poster_path: String, val year: Int, val releaseDate: String,
              private val languages: MutableList<String>, val director: MutableList<String>,
              private val cast: MutableList<String>, val runtime: Int,
@@ -17,7 +17,7 @@ class Movie (@Id val id: String, val userIds: MutableList<Long>, val title: Stri
     }
 
     fun toJson(): MovieJ {
-        return MovieJ(overview, languages, searchTitle, title, genres, poster_path, year, releaseDate, id, userIds, director, cast, runtime, reviews, rating)
+        return MovieJ(overview, languages, title, genres, poster_path, year, releaseDate, id, userIds, director, cast, runtime, reviews, rating)
     }
 
     fun setExtras(map: MutableMap<String, Double>) {

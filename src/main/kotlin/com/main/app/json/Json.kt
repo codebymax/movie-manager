@@ -28,7 +28,6 @@ data class IdListJ @JsonCreator constructor(
 data class MovieJ @JsonCreator constructor(
         val overview: String,
         val languages: MutableList<String>,
-        val search_title: String,
         val title: String,
         val genres: MutableList<String>,
         val posterPath: String,

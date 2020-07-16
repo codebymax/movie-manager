@@ -16,6 +16,7 @@ import java.net.SocketTimeoutException
 import java.text.Normalizer
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
 /*
@@ -37,65 +38,7 @@ class BaseController {
         return result
     }
 
-    fun transform(title: String): String {
-        val words = listOf("the", "of", "is", "a", "and", "to", "at", "be", "this", "have", "from")
-        var result = title
-        //remove common words, turn roman numerals to arabic, and remove whitespace
-        result = result.split(" ").filter { !words.contains(it.toLowerCase()) }.map { if (checkNumeral(it)) toArabic(it).toString() else it }.joinToString("")
-        //turn non-ASCII chars to ASCII
-        result = Normalizer.normalize(result, Normalizer.Form.NFD)
-        val pattern = Pattern.compile("\\p{InCOMBINING_DIACRITICAL_MARKS}+")
-        result = pattern.matcher(result).replaceAll("")
-        //uppercase
-        result = result.toUpperCase()
-        result = Regex("[^A-Za-z0-9]").replace(result, "")
-        return result
-    }
-
-    fun checkNumeral(input: String): Boolean {
-        val number = input.toUpperCase()
-        val valid = listOf<String>("M", "D", "C", "L", "X", "V", "I")
-        if(number.split("").filter { valid.contains(it) }.joinToString("").length == number.length)
-            return true
-        return false
-    }
-
-    fun toArabic(input: String): Int {
-        val number = input.toUpperCase()
-
-        if (number.startsWith("M")) return 1000 + toArabic(number.removeRange(0, 1))
-        if (number.startsWith("CM")) return 900 + toArabic(number.removeRange(0, 2))
-        if (number.startsWith("D")) return 500 + toArabic(number.removeRange(0, 1))
-        if (number.startsWith("CD")) return 400 + toArabic(number.removeRange(0, 2))
-        if (number.startsWith("C")) return 100 + toArabic(number.removeRange(0, 1))
-        if (number.startsWith("XC")) return 90 + toArabic(number.removeRange(0, 2))
-        if (number.startsWith("L")) return 50 + toArabic(number.removeRange(0, 1))
-        if (number.startsWith("XL")) return 40 + toArabic(number.removeRange(0, 2))
-        if (number.startsWith("X")) return 10 + toArabic(number.removeRange(0, 1))
-        if (number.startsWith("IX")) return 9 + toArabic(number.removeRange(0, 2))
-        if (number.startsWith("V")) return 5 + toArabic(number.removeRange(0, 1))
-        if (number.startsWith("IV")) return 4 + toArabic(number.removeRange(0, 2))
-        if (number.startsWith("I")) return 1 + toArabic(number.removeRange(0, 1))
-        return 0
-    }
-
-    fun similarity( s1: String, s2: String): Double {
-        var longer = s1
-        var shorter = s2
-        if (s1.length < s2.length) {
-            longer = s2
-            shorter = s1
-        }
-        val longerLength = longer.length
-        if (longerLength == 0)
-            return 1.0
-        val distance = LevenshteinDistance()
-        return (longerLength - distance.apply(longer, shorter)) / longerLength.toDouble()
-    }
-
-    fun getMovieInfo(movie: SingleMovieRequestJ?, movie_id: String?, uId: Long, counter: Counter): Movie? {
-        counter.increment()
-        val client = OkHttpClient.Builder().build()
+    fun getMovieInfo(movie: SingleMovieRequestJ?, movie_id: String?, uId: Long, client: OkHttpClient): Movie? {
         val omdbApiKey = "e3801df4"
         val url = "http://www.omdbapi.com/"
         val urlBuilder = HttpUrl.parse(url).newBuilder()
@@ -115,6 +58,7 @@ class BaseController {
         try {
             response = call.execute().body().string()
         } catch (e: SocketTimeoutException) {
+            println(e.message)
             println("Socket Timeout")
             return null
         }
@@ -146,7 +90,7 @@ class BaseController {
         if (jObject.has("imdbID"))
             tempId = jObject.get("imdbID").toString()
 
-        val result = Movie(tempId, mutableListOf(uId), jObject.get("Title").toString(), transform(jObject.get("Title").toString()),
+        val result = Movie(tempId, mutableListOf(uId), jObject.get("Title").toString(),
                 jObject.get("Plot").toString(), jObject.get("Genre").toString().split(",").map { it.trim() }.toMutableList(),
                 jObject.get("Poster").toString(), tempYear, convertDate(jObject.get("Released").toString()),
                 jObject.get("Language").toString().split(",").map { it.trim() }.toMutableList(), jObject.get("Director").toString().split(",").map { it.trim() }.toMutableList(),
@@ -182,6 +126,6 @@ class BaseController {
     }
 
     fun emptyMovie(): MovieJ {
-        return MovieJ("", mutableListOf(), "", "", mutableListOf(), "", 0, "", "", mutableListOf(), mutableListOf(), mutableListOf(), 0, mutableMapOf(), "")
+        return MovieJ("", mutableListOf(), "", mutableListOf(), "", 0, "", "", mutableListOf(), mutableListOf(), mutableListOf(), 0, mutableMapOf(), "")
     }
 }

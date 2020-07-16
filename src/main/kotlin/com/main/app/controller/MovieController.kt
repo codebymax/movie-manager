@@ -4,11 +4,12 @@ import com.main.app.json.*
 import com.main.app.model.Counter
 import com.main.app.model.Movie
 import com.main.app.repository.MovieRepository
+import com.main.app.repository.UserRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import java.util.*
 import kotlinx.coroutines.*
-import kotlin.system.*
+import okhttp3.OkHttpClient
 
 @RestController
 @RequestMapping("/{id}")
@@ -16,139 +17,132 @@ class MovieController : BaseController() {
     @Autowired
     lateinit var repository: MovieRepository
 
+    @Autowired
+    lateinit var users: UserRepository
+
     @GetMapping("/all")
     fun findAllNew(@PathVariable id: Long): MovieJArray {
-        var result = MovieJArray(mutableListOf())
-        measureTimeMillis({time -> println("Query took $time ms")}) {
-            result = MovieJArray(repository.findByUserIdsContains(id).map { it.toJson() }.toList())
+        if (users.findById(id).isEmpty)
+            return MovieJArray(mutableListOf())
+        else {
+            var result = MovieJArray(mutableListOf())
+            measureTimeMillis({ time -> println("Query took $time ms") }) {
+                result = MovieJArray(repository.findByUserIdsContains(id).map { it.toJson() }.toList())
+            }
+            return result
         }
-        return result
     }
 
     @GetMapping("/id")
     fun findId(@PathVariable id: Long,
                @RequestParam movie_id: String): MovieJ {
-        var result = emptyMovie()
-        measureTimeMillis({time -> println("Search took $time ms")}) {
-            val temp = repository.findById(movie_id)
-            if (temp.isPresent)
-                result = temp.get().toJson()
+        if (users.findById(id).isEmpty)
+            return emptyMovie()
+        else {
+            var result = emptyMovie()
+            measureTimeMillis({ time -> println("Search took $time ms") }) {
+                val temp = repository.findById(movie_id)
+                if (temp.isPresent)
+                    result = temp.get().toJson()
+            }
+            return result
         }
-        return result
     }
 
     @GetMapping("/count")
     fun countAll(@PathVariable id: Long): Int {
-        return repository.findByUserIdsContains(id).count()
-    }
-
-    @PostMapping("/add/test")
-    fun addTesting(@PathVariable id: Long,
-                   @RequestBody movie_ids: IdListJ): ResponseJ {
-        val ids = movie_ids.ids.distinct()
-        val query = repository.findAllBy()
-        val counter = Counter(0)
-        runBlocking {
-            ids.map { async(Dispatchers.IO) { process(id, it, query, counter) } }
-                .map { it.await() }
-        }
-        println(counter)
-        return ResponseJ(1, "N/A")
-    }
-
-    fun process(id: Long, input: String, query: MutableList<Movie>, counter: Counter) {
-        val result = query.find { movie -> movie.id == input }
-
-        if (result == null) {
-            val movie = getMovieInfo(null, input, id, counter)
-            if (movie != null)
-                repository.save(movie)
-        }
-        else {
-            if (!result.userIds.contains(id))
-                repository.save(result.addUser(id))
-        }
+        if (users.findById(id).isEmpty)
+            return 0
+        else
+            return repository.findByUserIdsContains(id).size
     }
 
     @PostMapping("/add/id")
-    fun addById(@PathVariable id: Long,
-                @RequestBody movie_ids: IdListJ): ResponseJ {
-        var new = 0
-        var reused = 0
-        var failed = 0
-        var duplicate = 0
-        var count = 0
-        val id_list = movie_ids.ids.distinct()
-        val query = repository.findAllBy()
-        measureTimeMillis({time -> println("Import took $time ms")}) {
-            id_list.forEach {
-                println(count)
-                count++
-                val result = query.find { movie -> movie.id == it }
-
-                if (result == null) {
-                    val movie = getMovieInfo(null, it, id, Counter(0))
-                    if (movie != null) {
-                        repository.save(movie)
-                        new++
-                    } else {
-                        failed++
-                    }
-                }
-                else {
-                    if (!result.userIds.contains(id)) {
-                        repository.save(result.addUser(id))
-                        reused++
-                    }
-                    else
-                        duplicate++
-                }
+    fun addTesting(@PathVariable id: Long,
+                   @RequestBody movie_ids: IdListJ): ResponseJ {
+        if (users.findById(id).isEmpty)
+            return ResponseJ(0, "User does not exist")
+        else {
+            val ids = movie_ids.ids.distinct()
+            val query = repository.findAllBy()
+            val client = OkHttpClient.Builder().build()
+            val counter = Counter()
+            runBlocking {
+                ids.map { async(Dispatchers.IO) { addId(id, it, query, counter, client) } }
+                    .map { it.await() }
             }
+            println(counter)
+            return ResponseJ(1, "N/A")
         }
-        println("$new movies added")
-        println("$reused movies updated")
-        println("$failed movies failed to add")
-        println("$duplicate movies already existed")
-        return ResponseJ(1, "Added: $new Reused: $reused Failed: $failed Existing: $duplicate")
     }
 
     @PostMapping("/add")
     fun addMovies(@PathVariable id: Long,
-                  @RequestBody movies: MovieRequestJ): MovieJArray {
-        val array = mutableListOf<MovieJ>()
-        var new = 0
-        var reused = 0
-        measureTimeMillis({time -> println("Import took $time ms")}) {
-            movies.movies.forEach {
-                val movie = getMovieInfo(it, null, id, Counter(0))
-                val result : Optional<Movie>
-                if (movie != null) {
-                    result = repository.findByTitleAndYear(movie.title, movie.year)
-                    if (result.isPresent) {
-                        if (!result.get().userIds.contains(id)) {
-                            repository.save(result.get().addUser(id))
-                            reused++
-                            array.add(result.get().addUser(id).toJson())
-                        }
-                    }
-                    else {
-                        repository.save(movie)
-                        new++
-                        array.add(movie.toJson())
-                    }
-                } else {
-                    println(it.title + ": Failed to add")
+                  @RequestBody movies: MovieRequestJ): ResponseJ {
+        if (users.findById(id).isEmpty)
+            return ResponseJ(0, "User does not exist")
+        else {
+            val query = repository.findAllBy()
+            val client = OkHttpClient.Builder().build()
+            val counter = Counter()
+            measureTimeMillis({ time -> println("Import took $time ms") }) {
+                runBlocking {
+                    movies.movies.map { async(Dispatchers.IO) { addTitle(id, it, query, counter, client) } }
+                            .map { it.await() }
                 }
             }
+            println(counter)
+            return ResponseJ(1, "N/A")
         }
-        println("$new movies added")
-        println("$reused movies updated")
-        return MovieJArray(array)
     }
 
     @DeleteMapping("/delete/all")
     fun delMovies(@PathVariable id: Long): ResponseJ {
-        repository.deleteAllBy()
-        return ResponseJ(1, "N/A")
+        if (users.findById(id).isEmpty)
+            return ResponseJ(0, "User does not exist")
+        else {
+            repository.deleteById(id)
+            return ResponseJ(1, "N/A")
+        }
+    }
+
+    fun addId(id: Long, input: String, query: MutableList<Movie>, counter: Counter, client: OkHttpClient) {
+        val result = repository.findById(input)
+
+        if (result.isEmpty) {
+            val movie = getMovieInfo(null, input, id, client)
+            if (movie != null) {
+                repository.save(movie)
+                counter.incrementNew()
+            } else
+                counter.incrementFailed()
+        } else {
+            if (!result.get().userIds.contains(id)) {
+                repository.save(result.get().addUser(id))
+                counter.incrementReused()
+            } else
+                counter.incrementDuplicate()
+        }
+    }
+
+    fun addTitle(id: Long, input: SingleMovieRequestJ, query: MutableList<Movie>, counter: Counter, client: OkHttpClient) {
+        val movie = getMovieInfo(input, null, id, client)
+        val result: Optional<Movie>
+        if (movie != null) {
+            result = repository.findById(movie.id)
+            if (result.isPresent) {
+                if (!result.get().userIds.contains(id)) {
+                    repository.save(result.get().addUser(id))
+                    counter.incrementReused()
+                }
+                else
+                    counter.incrementDuplicate()
+            } else {
+                repository.save(movie)
+                counter.incrementNew()
+            }
+        } else {
+            counter.incrementFailed()
+        }
     }
 }

@@ -25,7 +25,7 @@ class SearchController : BaseController() {
                 movies = if (year != null) repository.findByUserIdsContainsAndYear(id, year) else repository.findByUserIdsContains(id)
             }
             movies = movies.filter { FuzzySearch.tokenSortPartialRatio(input, it.title) > 70 }.toMutableList()
-            val sortedMovies = movies.sortedWith(compareByDescending { FuzzySearch.tokenSortRatio(input, it.searchTitle) }).map { it.toJson() }
+            val sortedMovies = movies.sortedWith(compareByDescending { FuzzySearch.tokenSortRatio(input, it.title) }).map { it.toJson() }
             array = MovieJArray(sortedMovies)
         }
         return array
