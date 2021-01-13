@@ -21,13 +21,14 @@ class MovieController : BaseController() {
     lateinit var users: UserRepository
 
     @GetMapping("/all")
-    fun findAllNew(@PathVariable id: Long): MovieJArray {
+    fun findAllNew(@PathVariable id: Long,
+                   @RequestParam(value = "page", required = true) page: Int): MovieJArray {
         if (users.findById(id).isEmpty)
             return MovieJArray(mutableListOf())
         else {
             var result = MovieJArray(mutableListOf())
             measureTimeMillis({ time -> println("Query took $time ms") }) {
-                result = MovieJArray(repository.findByUserIdsContains(id).map { it.toJson() }.toList())
+                result = MovieJArray(repository.findByUserIdsContains(id).map { it.toJson() }.toList().subList((page-1)*5, page*5))
             }
             return result
         }
@@ -126,6 +127,7 @@ class MovieController : BaseController() {
     }
 
     fun addTitle(id: Long, input: SingleMovieRequestJ, query: MutableList<Movie>, counter: Counter, client: OkHttpClient) {
+        println(input.title)
         val movie = getMovieInfo(input, null, id, client)
         val result: Optional<Movie>
         if (movie != null) {

@@ -9,7 +9,7 @@ plugins {
 
 group = "com.main.app"
 version = "0.0.1"
-java.sourceCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_13
 
 repositories {
 	mavenCentral()

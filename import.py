@@ -2,13 +2,15 @@ import os
 import requests
 import json
 
-directory = r'D:\\Movies\\'
+#directory = r'D:\\Movies\\'
+directory = '/Volumes/Data/Movies/'
 
 def getFiles(dir):
     if(os.path.isdir(dir)):
         for file in os.listdir(dir):
             if(os.path.isdir(dir + file)):
-                newDir = dir + file + r'\\'
+                #newDir = dir + file + r'\\'
+                newDir = dir + file + '/'
                 getFiles(newDir)
             elif(os.path.isfile(dir + file) and not file.startswith('.')):
                 if(file.find("(") == -1):
@@ -30,6 +32,6 @@ input = {}
 input["movies"] = result
 #print({k: str(v).encode('utf-8') for k, v in input.items()})
 
-URL = "http://localhost:5000/0/add"
+URL = "http://localhost:5000/1/add"
 r = requests.post(URL, json=input)
-#print(json.dumps(r.json(), indent=2))
+print(json.dumps(r.json(), indent=2))

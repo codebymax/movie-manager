@@ -18,8 +18,8 @@ class UserController {
     fun auth(@RequestParam(value = "username", required = true) username: String,
              @RequestParam(value = "password", required = true) password: String): ResponseJ {
         try {
-            userRepo.findByUsernameAndPassword(username, password)
-            return ResponseJ(1, "N/A")
+            val user: User = userRepo.findByUsernameAndPassword(username, password)
+            return ResponseJ(1, user.id.toString())
         }
         catch (e: EmptyResultDataAccessException) {
             return ResponseJ(0, "Login failed!")

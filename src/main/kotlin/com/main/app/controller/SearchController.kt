@@ -59,7 +59,8 @@ class SearchController : BaseController() {
 
     @GetMapping("/genre")
     fun searchByGenre(@PathVariable id: Long,
-                      @RequestParam(value = "input", required = true) input: String): MovieJArray {
+                      @RequestParam(value = "input", required = true) input: String,
+                      @RequestParam(value = "page", required = true) page: Int): MovieJArray {
         var array = MovieJArray(mutableListOf())
         measureTimeMillis({ time -> println("Search took $time ms")}) {
             array = MovieJArray(repository.findByUserIdsContainsAndGenresContains(id, input).map { it.toJson() })
