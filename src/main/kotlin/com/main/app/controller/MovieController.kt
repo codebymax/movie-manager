@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
+import java.util.Random;
 
 @RestController
 @RequestMapping("/{id}")
@@ -26,11 +27,50 @@ class MovieController : BaseController() {
         if (users.findById(id).isEmpty)
             return MovieJArray(mutableListOf())
         else {
-            var result = MovieJArray(mutableListOf())
+            var result = listOf<MovieJ>()
             measureTimeMillis({ time -> println("Query took $time ms") }) {
-                result = MovieJArray(repository.findByUserIdsContains(id).map { it.toJson() }.toList().subList((page-1)*5, page*5))
+                result =repository.findByUserIdsContains(id).map { it.toJson() }.toList()
             }
-            return result
+            if (result.size <= 5)
+                return MovieJArray(result)
+            else
+                return MovieJArray(result.subList((page-1)*5, page*5))
+        }
+    }
+
+    @GetMapping("/genre")
+    fun searchByGenre(@PathVariable id: Long,
+                      @RequestParam(value = "genre", required = true) input: String,
+                      @RequestParam(value = "page", required = true) page: Int): MovieJArray {
+        var result = listOf<MovieJ>()
+        measureTimeMillis({ time -> println("Search took $time ms")}) {
+            result = repository.findByUserIdsContainsAndGenresContains(id, input).map { it.toJson() }.toList()
+        }
+        if (result.size <= 5)
+            return MovieJArray(result)
+        else
+            return MovieJArray(result.subList((page-1)*5, page*5))
+    }
+
+    @GetMapping("/random")
+    fun getRandom(@PathVariable id: Long,
+                  @RequestParam(value = "genre", required = false) genre: String?): MovieJArray {
+        if (users.findById(id).isEmpty)
+            return MovieJArray(mutableListOf())
+        else {
+            var result = mutableListOf<MovieJ>()
+            var temp : List<MovieJ> = listOf()
+            measureTimeMillis({ time -> println("Query took $time ms") }) {
+                temp = repository.findByUserIdsContains(id).map { it.toJson() }
+                if (genre != null) {
+                    temp = temp.filter { it.genres.contains(genre) }
+                }
+            }
+            var rand = Random()
+            for (i in 0..4) {
+                result.add(temp.get(rand.nextInt(temp.size)))
+            }
+            return MovieJArray(result)
         }
     }
 
@@ -56,6 +96,20 @@ class MovieController : BaseController() {
             return 0
         else
             return repository.findByUserIdsContains(id).size
+    }
+
+    @GetMapping("/genre/list")
+    fun getAllGenres(@PathVariable id: Long): GenreJArray {
+        var genreMap = mutableListOf<MutableList<String>>()
+        var array = mutableSetOf<String>()
+        measureTimeMillis({ time -> println("Search took $time ms")}) {
+            var movies = repository.findByUserIdsContains(id)
+            measureTimeMillis({ time -> println("Processing took $time ms")}) {
+                movies.forEach { genreMap.add(it.genres) }
+                array = genreMap.flatten().toMutableSet()
+            }
+        }
+        return GenreJArray(array)
     }
 
     @PostMapping("/add/id")

@@ -22,6 +22,7 @@ class UserController {
             return ResponseJ(1, user.id.toString())
         }
         catch (e: EmptyResultDataAccessException) {
+            println("Failed: $username $password")
             return ResponseJ(0, "Login failed!")
         }
     }
@@ -34,6 +35,7 @@ class UserController {
         }
         catch (e: EmptyResultDataAccessException) {
             userRepo.save(User(getNewId(), user.username, user.password))
+            println("Creation success: ${user.username} ${user.password}")
             return ResponseJ(1, "N/A")
         }
     }

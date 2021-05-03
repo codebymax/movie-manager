@@ -43,31 +43,6 @@ class SearchController : BaseController() {
         return array
     }
 
-    @GetMapping("/genre/all")
-    fun getAllGenres(@PathVariable id: Long): GenreJArray {
-        var genreMap = mutableListOf<MutableList<String>>()
-        var array = mutableSetOf<String>()
-        measureTimeMillis({ time -> println("Search took $time ms")}) {
-            var movies = repository.findByUserIdsContains(id)
-            measureTimeMillis({ time -> println("Processing took $time ms")}) {
-                movies.forEach { genreMap.add(it.genres) }
-                array = genreMap.flatten().toMutableSet()
-            }
-        }
-        return GenreJArray(array)
-    }
-
-    @GetMapping("/genre")
-    fun searchByGenre(@PathVariable id: Long,
-                      @RequestParam(value = "input", required = true) input: String,
-                      @RequestParam(value = "page", required = true) page: Int): MovieJArray {
-        var array = MovieJArray(mutableListOf())
-        measureTimeMillis({ time -> println("Search took $time ms")}) {
-            array = MovieJArray(repository.findByUserIdsContainsAndGenresContains(id, input).map { it.toJson() })
-        }
-        return array
-    }
-
     @GetMapping("/release")
     fun searchByRelease(@PathVariable id: Long,
                       @RequestParam(value = "input", required = true) input: String): MovieJArray {

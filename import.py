@@ -2,15 +2,15 @@ import os
 import requests
 import json
 
-#directory = r'D:\\Movies\\'
-directory = '/Volumes/Data/Movies/'
+directory = r'D:\\Movies\\'
+#directory = '/Volumes/Data/Movies/'
 
 def getFiles(dir):
     if(os.path.isdir(dir)):
         for file in os.listdir(dir):
             if(os.path.isdir(dir + file)):
-                #newDir = dir + file + r'\\'
-                newDir = dir + file + '/'
+                newDir = dir + file + r'\\'
+                #newDir = dir + file + '/'
                 getFiles(newDir)
             elif(os.path.isfile(dir + file) and not file.startswith('.')):
                 if(file.find("(") == -1):
